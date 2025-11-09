@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Status Dashboard - Study Notes Feasibility</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 2.5em;
+            margin-bottom: 5px;
+        }
+
+        .stat-card.passed h3 { color: #10b981; }
+        .stat-card.failed h3 { color: #ef4444; }
+        .stat-card.pending h3 { color: #f59e0b; }
+        .stat-card.total h3 { color: #667eea; }
+
+        .stat-card p {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .controls {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .controls input,
+        .controls select {
+            padding: 10px 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .controls input:focus,
+        .controls select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .module-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .module-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .module-header h2 {
+            color: #667eea;
+            font-size: 1.8em;
+        }
+
+        .module-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9em;
+        }
+
+        .module-stats span {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .module-stats .passed { background: #d1fae5; color: #065f46; }
+        .module-stats .failed { background: #fee2e2; color: #991b1b; }
+        .module-stats .pending { background: #fef3c7; color: #92400e; }
+
+        .test-card {
+            background: #f9fafb;
+            border-left: 4px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .test-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-card.passed { border-left-color: #10b981; }
+        .test-card.failed { border-left-color: #ef4444; }
+        .test-card.pending { border-left-color: #f59e0b; }
+        .test-card.in-progress { border-left-color: #3b82f6; }
+
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+
+        .test-title {
+            flex: 1;
+        }
+
+        .test-title h3 {
+            color: #1f2937;
+            font-size: 1.2em;
+            margin-bottom: 5px;
+        }
+
+        .test-id {
+            color: #6b7280;
+            font-size: 0.9em;
+            font-family: 'Courier New', monospace;
+        }
+
+        .test-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge.status {
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        .badge.status:hover {
+            opacity: 0.8;
+        }
+
+        .badge.passed { background: #d1fae5; color: #065f46; }
+        .badge.failed { background: #fee2e2; color: #991b1b; }
+        .badge.pending { background: #fef3c7; color: #92400e; }
+        .badge.in-progress { background: #dbeafe; color: #1e40af; }
+
+        .badge.unit { background: #e0e7ff; color: #3730a3; }
+        .badge.integration { background: #fce7f3; color: #831843; }
+        .badge.performance { background: #fef3c7; color: #92400e; }
+        .badge.edge { background: #f3e8ff; color: #6b21a8; }
+
+        .badge.high { background: #fee2e2; color: #991b1b; }
+        .badge.medium { background: #fef3c7; color: #92400e; }
+        .badge.low { background: #d1fae5; color: #065f46; }
+
+        .test-details {
+            display: none;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .test-card.expanded .test-details {
+            display: block;
+        }
+
+        .detail-section {
+            margin-bottom: 15px;
+        }
+
+        .detail-section h4 {
+            color: #667eea;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .code-block {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+            font-size: 1.2em;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .test-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Test Status Dashboard</h1>
+            <p>Study Notes Feasibility Project - Comprehensive Test Suite</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card total">
+                <h3 id="total-tests">0</h3>
+                <p>Total Tests</p>
+            </div>
+            <div class="stat-card passed">
+                <h3 id="passed-tests">0</h3>
+                <p>Passed</p>
+            </div>
+            <div class="stat-card failed">
+                <h3 id="failed-tests">0</h3>
+                <p>Failed</p>
+            </div>
+            <div class="stat-card pending">
+                <h3 id="pending-tests">0</h3>
+                <p>Pending</p>
+            </div>
+        </div>
+
+        <div class="controls">
+            <input type="text" id="search" class="search-box" placeholder="🔍 Search tests...">
+            <select id="filter-status">
+                <option value="all">All Status</option>
+                <option value="passed">Passed</option>
+                <option value="failed">Failed</option>
+                <option value="pending">Pending</option>
+                <option value="in-progress">In Progress</option>
+            </select>
+            <select id="filter-type">
+                <option value="all">All Types</option>
+                <option value="unit">Unit Test</option>
+                <option value="integration">Integration Test</option>
+                <option value="performance">Performance Test</option>
+                <option value="edge">Edge Case Test</option>
+            </select>
+            <select id="filter-priority">
+                <option value="all">All Priorities</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+            </select>
+        </div>
+
+        <div id="test-container"></div>
+    </div>
+
+    <script>
+        const tests = [
+            // Module 1: Scrape Videos
+            {
+                id: "1.1",
+                module: "Scrape Videos",
+                moduleFile: "scrape/scrape_videos.py",
+                title: "Valid TikTok URL - Single Video",
+                status: "passed",
+                type: "unit",
+                priority: "high",
+                input: 'url = "https://www.tiktok.com/@username/video/1234567890"',
+                expectedOutput: '[\n    "https://www.tiktok.com/@username/video/1234567890"\n]'
+            },
+            {
+                id: "1.2",
+                module: "Scrape Videos",
+                moduleFile: "scrape/scrape_videos.py",
+                title: "Valid TikTok URL - User Profile Page",
+                status: "failed",
+                type: "integration",
+                priority: "high",
+                input: 'url = "https://www.tiktok.com/@username"',
+                expectedOutput: '[\n    "https://www.tiktok.com/@username/video/1234567890",\n    "https://www.tiktok.com/@username/video/0987654321",\n    # ... more video URLs\n]'
+            },
+            {
+                id: "1.3",
+                module: "Scrape Videos",
+                moduleFile: "scrape/scrape_videos.py",
+                title: "Invalid URL",
+                status: "passed",
+                type: "unit",
+                priority: "medium",
+                input: 'url = "https://www.youtube.com/watch?v=abc123"',
+                expectedOutput: '[]  # Empty list or raise ValueError'
+            },
+            {
+                id: "1.4",
+                module: "Scrape Videos",
+                moduleFile: "scrape/scrape_videos.py",
+                title: "Malformed URL",
+                status: "passed",
+                type: "unit",
+                priority: "medium",
+                input: 'url = "not-a-url"',
+                expectedOutput: '# Raise ValueError or URLError'
+            },
+            {
+                id: "1.5",
+                module: "Scrape Videos",
+                moduleFile: "scrape/scrape_videos.py",
+                title: "Network Error Handling",
+                status: "passed",
+                type: "integration",
+                priority: "medium",
+                input: 'url = "https://www.tiktok.com/@username"  # Simulate network failure',
+                expectedOutput: '# Raise ConnectionError or TimeoutError with appropriate message'
+            },
+            // Module 2: Extract Audio
+            {
+                id: "2.1",
+                module: "Extract Audio",
+                moduleFile: "audio/extract_audio.py",
+                title: "Valid MP4 Video File",
+                status: "passed",
+                type: "unit",
+                priority: "high",
+                input: 'video_path = "test_data/sample_video.mp4"\noutput_path = "test_data/output_audio.wav"',
+                expectedOutput: '"test_data/output_audio.wav"  # File path string\n# File should exist and be valid WAV format'
+            },
+            {
+                id: "2.2",
+                module: "Extract Audio",
+                moduleFile: "audio/extract_audio.py",
+                title: "Non-existent Video File",
+                status: "failed",
+                type: "unit",
+                priority: "high",
+                input: 'video_path = "test_data/nonexistent.mp4"\noutput_path = "test_data/output_audio.wav"',
+                expectedOutput: '# Raise FileNotFoundError'
+            },
+            {
+                id: "2.3",
+                module: "Extract Audio",
+                moduleFile: "audio/extract_audio.py",
+                title: "Invalid Video Format",
+                status: "passed",
+                type: "unit",
+                priority: "medium",
+                input: 'video_path = "test_data/image.jpg"\noutput_path = "test_data/output_audio.wav"',
+                expectedOutput: '# Raise ValueError or FFmpeg error indicating invalid format'
+            },
+            {
+                id: "2.4",
+                module: "Extract Audio",
+                moduleFile: "audio/extract_audio.py",
+                title: "Video Without Audio Track",
+                status: "passed",
+                type: "unit",
+                priority: "medium",
+                input: 'video_path = "test_data/video_no_audio.mp4"\noutput_path = "test_data/output_audio.wav"',
+                expectedOutput: '# Raise ValueError or return empty file with appropriate warning'
+            },
+            {
+                id: "2.5",
+                module: "Extract Audio",
+                moduleFile: "audio/extract_audio.py",
+                title: "Output Directory Doesn't Exist",
+                status: "passed",
+                type: "unit",
+                priority: "low",
+                input: 'video_path = "test_data/sample_video.mp4"\noutput_path = "nonexistent_dir/output_audio.wav"',
+                expectedOutput: '# Either create directory or raise FileNotFoundError'
+            },
+            {
+                id: "2.6",
+                module: "Extract Audio",
+                moduleFile: "audio/extract_audio.py",
+                title: "Verify WAV Format Specifications",
+                status: "passed",
+                type: "unit",
+                priority: "high",
+                input: 'video_path = "test_data/sample_video.mp4"\noutput_path = "test_data/output_audio.wav"',
+                expectedOutput: '# WAV file should have:\n# - Sample rate: 16000 Hz\n# - Channels: 1 (mono)\n# - Codec: PCM 16-bit'
+            },
+            // Module 3: Transcribe Audio
+            {
+                id: "3.1",
+                module: "Transcribe Audio",
+                moduleFile: "transcript/transcribe.py",
+                title: "Valid WAV Audio File - English",
+                status: "passed",
+                type: "unit",
+                priority: "high",
+                input: 'audio_path = "test_data/sample_audio.wav"',
+                expectedOutput: '"This is a sample transcript of the audio content. It should contain the full text spoken in the video."'
+            },
+            {
+                id: "3.2",
+                module: "Transcribe Audio",
+                moduleFile: "transcript/transcribe.py",
+                title: "Valid WAV Audio File - Non-English",
+                status: "passed",
+                type: "unit",
+                priority: "medium",
+                input: 'audio_path = "test_data/spanish_audio.wav"',
+                expectedOutput: '"Este es un ejemplo de transcripción en español."\n# Or specify language parameter'
+            },
+            {
+                id: "3.3",
+                module: "Transcribe Audio",
+                moduleFile: "transcript/transcribe.py",
+                title: "Non-existent Audio File",
+                status: "failed",
+                type: "unit",
+                priority: "high",
+                input: 'audio_path = "test_data/nonexistent.wav"',
+                expectedOutput: '# Raise FileNotFoundError'
+            },
+            {
+                id: "3.4",
+                module: "Transcribe Audio",
+                moduleFile: "transcript/transcribe.py",
+                title: "Invalid Audio Format",
+                status: "passed",
+                type: "unit",
+                priority: "medium",
+                input: 'audio_path = "test_data/image.jpg"',
+                expectedOutput: '# Raise ValueError indicating invalid audio format'
+            },
+            {
+                id: "3.5",
+                module: "Transcribe Audio",
+                moduleFile: "transcript/transcribe.py",
+                title: "Empty/Silent Audio File",
+                status: "passed",
+                type: "unit",
+                priority: "low",
+                input: 'audio_path = "test_data/silent_audio.wav"',
+                expectedOutput: '""  # Empty string or appropriate message'
+            },
+            {
+                id: "3.6",
+                module: "Transcribe Audio",
+                moduleFile: "transcript/transcribe.py",
+                title: "Very Long Audio File (>25 minutes)",
+                status: "passed",
+                type: "integration",
+                priority: "medium",
+                input: 'audio_path = "test_data/long_audio_30min.wav"',
+                expectedOutput: '# Should handle chunking or raise appropriate error if API limit exceeded'
+            },
+            {
+                id: "3.7",
+                module: "Transcribe Audio",
+                moduleFile: "transcript/transcribe.py",
+                title: "API Error Handling",
+                status: "passed",
+                type: "integration",
+                priority: "high",
+                input: 'audio_path = "test_data/sample_audio.wav"  # Simulate API failure',
+                expectedOutput: '# Raise APIError or ConnectionError with appropriate message'
+            },
+            // Module 4: Summarize Notes
+            {
+                id: "4.1",
+                module: "Summarize Notes",
+                moduleFile: "summarize/summarize_notes.py",
+                title: "Valid Transcript - Short",
+                status: "passed",
+                type: "unit",
+                priority: "high",
+                input: 'transcript = "This is a short transcript about machine learning. It covers basic concepts."',
+                expectedOutput: '"""# Machine Learning Notes\n\n## Key Concepts\n- Basic machine learning concepts\n\n## Summary\nThis transcript covers fundamental machine learning topics.\n"""'
+            },
+            {
+                id: "4.2",
+                module: "Summarize Notes",
+                moduleFile: "summarize/summarize_notes.py",
+                title: "Valid Transcript - Long",
+                status: "passed",
+                type: "unit",
+                priority: "high",
+                input: 'transcript = "This is a very long transcript..."  # 5000+ words',
+                expectedOutput: '"""# Study Notes\n\n## Main Topics\n- Topic 1\n- Topic 2\n...\n\n## Key Points\n- Point 1\n- Point 2\n...\n\n## Summary\nComprehensive summary of the content.\n"""'
+            },
+            {
+                id: "4.3",
+                module: "Summarize Notes",
+                moduleFile: "summarize/summarize_notes.py",
+                title: "Empty Transcript",
+                status: "passed",
+                type: "unit",
+                priority: "medium",
+                input: 'transcript = ""',
+                expectedOutput: '# Either return empty markdown or raise ValueError'
+            },
+            {
+                id: "4.4",
+                module: "Summarize Notes",
+                moduleFile: "summarize/summarize_notes.py",
+                title: "Transcript with Special Characters",
+                status: "passed",
+                type: "unit",
+                priority: "low",
+                input: 'transcript = "This transcript has special chars: @#$%^&*() and unicode: 你好世界"',
+                expectedOutput: '"""# Study Notes\n\n## Content\nProperly formatted notes with special characters handled correctly.\n"""'
+            },
+            {
+                id: "4.5",
+                module: "Summarize Notes",
+                moduleFile: "summarize/summarize_notes.py",
+                title: "API Error Handling",
+                status: "passed",
+                type: "integration",
+                priority: "high",
+                input: 'transcript = "Sample transcript"  # Simulate API failure',
+                expectedOutput: '# Raise APIError or ConnectionError with appropriate message'
+            },
+            {
+                id: "4.6",
+                module: "Summarize Notes",
+                moduleFile: "summarize/summarize_notes.py",
+                title: "Verify Markdown Format",
+                status: "passed",
+                type: "unit",
+                priority: "high",
+                input: 'transcript = "Sample transcript content"',
+                expectedOutput: '# Should return valid markdown with:\n# - Proper headings (#, ##)\n# - Bullet lists (-)\n# - Code blocks if needed (```)\n# - No formatting errors'
+            },
+            // Integration Tests
+            {
+                id: "5.1",
+                module: "Integration Tests",
+                moduleFile: "Full Pipeline",
+                title: "Complete Workflow - Single Video",
+                status: "passed",
+                type: "integration",
+                priority: "high",
+                input: 'tiktok_url = "https://www.tiktok.com/@username/video/1234567890"',
+                expectedOutput: '# 1. Video downloaded to: test_data/video_1234567890.mp4\n# 2. Audio extracted to: test_data/audio_1234567890.wav\n# 3. Transcript saved to: test_data/transcript_1234567890.txt\n# 4. Notes saved to: test_data/notes_1234567890.md'
+            },
+            {
+                id: "5.2",
+                module: "Integration Tests",
+                moduleFile: "Full Pipeline",
+                title: "Complete Workflow - Multiple Videos",
+                status: "passed",
+                type: "integration",
+                priority: "high",
+                input: 'tiktok_url = "https://www.tiktok.com/@username"  # Profile with 5 videos',
+                expectedOutput: '# Process all 5 videos:\n# - 5 video files\n# - 5 audio files\n# - 5 transcript files\n# - 5 notes files\n# - Summary report in test_results/'
+            },
+            {
+                id: "5.3",
+                module: "Integration Tests",
+                moduleFile: "Full Pipeline",
+                title: "Pipeline Error Handling - Video Download Fails",
+                status: "passed",
+                type: "integration",
+                priority: "medium",
+                input: 'tiktok_url = "https://www.tiktok.com/@invalid/video/999"  # Fails to download',
+                expectedOutput: '# Should handle error gracefully:\n# - Log error to test_results/error_log.txt\n# - Continue with next video if applicable\n# - Return appropriate error status'
+            },
+            {
+                id: "5.4",
+                module: "Integration Tests",
+                moduleFile: "Full Pipeline",
+                title: "Pipeline Error Handling - Transcription Fails",
+                status: "passed",
+                type: "integration",
+                priority: "medium",
+                input: 'tiktok_url = "https://www.tiktok.com/@username/video/1234567890"\n# Audio extraction succeeds, but transcription fails',
+                expectedOutput: '# Should:\n# - Keep extracted audio file\n# - Log transcription error\n# - Skip summarization step\n# - Report partial success'
+            },
+            // Performance Tests
+            {
+                id: "6.1",
+                module: "Performance Tests",
+                moduleFile: "Full Pipeline",
+                title: "Processing Time - Single Video",
+                status: "passed",
+                type: "performance",
+                priority: "medium",
+                input: 'tiktok_url = "https://www.tiktok.com/@username/video/1234567890"\n# Video duration: 60 seconds',
+                expectedOutput: '# Processing time should be:\n# - Video download: < 30 seconds\n# - Audio extraction: < 5 seconds\n# - Transcription: < 60 seconds\n# - Summarization: < 30 seconds\n# Total: < 2 minutes'
+            },
+            {
+                id: "6.2",
+                module: "Performance Tests",
+                moduleFile: "Full Pipeline",
+                title: "Memory Usage",
+                status: "passed",
+                type: "performance",
+                priority: "low",
+                input: 'tiktok_url = "https://www.tiktok.com/@username/video/1234567890"',
+                expectedOutput: '# Memory usage should be reasonable:\n# - Peak memory: < 500 MB\n# - No memory leaks'
+            },
+            // Edge Cases
+            {
+                id: "7.1",
+                module: "Edge Cases",
+                moduleFile: "Full Pipeline",
+                title: "Very Short Video (< 5 seconds)",
+                status: "passed",
+                type: "edge",
+                priority: "low",
+                input: 'tiktok_url = "https://www.tiktok.com/@username/video/1234567890"  # 3 second video',
+                expectedOutput: '# Should handle gracefully:\n# - Extract audio successfully\n# - Generate transcript (may be short)\n# - Generate notes (may be minimal)'
+            },
+            {
+                id: "7.2",
+                module: "Edge Cases",
+                moduleFile: "Full Pipeline",
+                title: "Video with Background Music Only",
+                status: "passed",
+                type: "edge",
+                priority: "low",
+                input: 'tiktok_url = "https://www.tiktok.com/@username/video/1234567890"  # No speech',
+                expectedOutput: '# Should:\n# - Extract audio successfully\n# - Return empty or minimal transcript\n# - Handle gracefully in notes generation'
+            },
+            {
+                id: "7.3",
+                module: "Edge Cases",
+                moduleFile: "Full Pipeline",
+                title: "Video with Multiple Languages",
+                status: "passed",
+                type: "edge",
+                priority: "low",
+                input: 'tiktok_url = "https://www.tiktok.com/@username/video/1234567890"  # English + Spanish',
+                expectedOutput: '# Should:\n# - Detect multiple languages or use specified language\n# - Generate transcript with both languages\n# - Format notes appropriately'
+            }
+        ];
+
+        // Group tests by module
+        const modules = {};
+        tests.forEach(test => {
+            if (!modules[test.module]) {
+                modules[test.module] = [];
+            }
+            modules[test.module].push(test);
+        });
+
+        function updateStats() {
+            const total = tests.length;
+            const passed = tests.filter(t => t.status === 'passed').length;
+            const failed = tests.filter(t => t.status === 'failed').length;
+            const pending = tests.filter(t => t.status === 'pending').length;
+
+            document.getElementById('total-tests').textContent = total;
+            document.getElementById('passed-tests').textContent = passed;
+            document.getElementById('failed-tests').textContent = failed;
+            document.getElementById('pending-tests').textContent = pending;
+        }
+
+        function getModuleStats(moduleTests) {
+            const passed = moduleTests.filter(t => t.status === 'passed').length;
+            const failed = moduleTests.filter(t => t.status === 'failed').length;
+            const pending = moduleTests.filter(t => t.status === 'pending').length;
+            return { passed, failed, pending, total: moduleTests.length };
+        }
+
+        function renderTests(filteredTests = tests) {
+            const container = document.getElementById('test-container');
+            container.innerHTML = '';
+
+            if (filteredTests.length === 0) {
+                container.innerHTML = '<div class="no-results">No tests match your filters</div>';
+                return;
+            }
+
+            // Group filtered tests by module
+            const filteredModules = {};
+            filteredTests.forEach(test => {
+                if (!filteredModules[test.module]) {
+                    filteredModules[test.module] = [];
+                }
+                filteredModules[test.module].push(test);
+            });
+
+            Object.keys(filteredModules).forEach(moduleName => {
+                const moduleTests = filteredModules[moduleName];
+                const stats = getModuleStats(moduleTests);
+                const firstTest = moduleTests[0];
+
+                const moduleSection = document.createElement('div');
+                moduleSection.className = 'module-section';
+                moduleSection.innerHTML = `
+                    <div class="module-header">
+                        <div>
+                            <h2>${moduleName}</h2>
+                            <small style="color: #6b7280;">${firstTest.moduleFile}</small>
+                        </div>
+                        <div class="module-stats">
+                            <span class="passed">✓ ${stats.passed}</span>
+                            <span class="failed">✗ ${stats.failed}</span>
+                            <span class="pending">○ ${stats.pending}</span>
+                        </div>
+                    </div>
+                `;
+
+                moduleTests.forEach(test => {
+                    const testCard = document.createElement('div');
+                    testCard.className = `test-card ${test.status}`;
+                    testCard.innerHTML = `
+                        <div class="test-header">
+                            <div class="test-title">
+                                <h3>${test.title}</h3>
+                                <div class="test-id">Test ${test.id}</div>
+                            </div>
+                            <div class="test-badges">
+                                <span class="badge status ${test.status}" onclick="toggleStatus('${test.id}')">
+                                    ${test.status === 'passed' ? '✓ Passed' : 
+                                      test.status === 'failed' ? '✗ Failed' : 
+                                      test.status === 'in-progress' ? '⟳ In Progress' : '○ Pending'}
+                                </span>
+                                <span class="badge ${test.type}">${test.type}</span>
+                                ${test.priority ? `<span class="badge ${test.priority}">${test.priority}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="test-details">
+                            <div class="detail-section">
+                                <h4>Input</h4>
+                                <div class="code-block">${escapeHtml(test.input)}</div>
+                            </div>
+                            <div class="detail-section">
+                                <h4>Expected Output</h4>
+                                <div class="code-block">${escapeHtml(test.expectedOutput)}</div>
+                            </div>
+                        </div>
+                    `;
+
+                    testCard.addEventListener('click', (e) => {
+                        if (!e.target.classList.contains('badge')) {
+                            testCard.classList.toggle('expanded');
+                        }
+                    });
+
+                    moduleSection.appendChild(testCard);
+                });
+
+                container.appendChild(moduleSection);
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function toggleStatus(testId) {
+            const test = tests.find(t => t.id === testId);
+            if (!test) return;
+
+            const statuses = ['pending', 'in-progress', 'passed', 'failed'];
+            const currentIndex = statuses.indexOf(test.status);
+            const nextIndex = (currentIndex + 1) % statuses.length;
+            test.status = statuses[nextIndex];
+
+            // Save to localStorage
+            saveTestStatuses();
+            
+            updateStats();
+            applyFilters();
+        }
+
+        function saveTestStatuses() {
+            const statuses = {};
+            tests.forEach(test => {
+                statuses[test.id] = test.status;
+            });
+            localStorage.setItem('testStatuses', JSON.stringify(statuses));
+        }
+
+                                        function loadTestStatuses() {
+            // Default statuses from last test run (updated by run_tests_and_update_dashboard.py)
+            const defaults = {
+                "1.1": "passed",
+                "1.2": "failed",
+                "1.3": "passed",
+                "1.4": "passed",
+                "1.5": "passed",
+                "2.1": "passed",
+                "2.2": "failed",
+                "2.3": "passed",
+                "2.4": "passed",
+                "2.5": "passed",
+                "2.6": "passed",
+                "3.1": "passed",
+                "3.2": "passed",
+                "3.3": "failed",
+                "3.4": "passed",
+                "3.5": "passed",
+                "3.6": "passed",
+                "3.7": "passed",
+                "4.1": "passed",
+                "4.2": "passed",
+                "4.3": "passed",
+                "4.4": "passed",
+                "4.5": "passed",
+                "4.6": "passed",
+                "5.1": "passed",
+                "5.2": "passed",
+                "5.3": "passed",
+                "5.4": "passed",
+                "6.1": "passed",
+                "6.2": "passed",
+                "7.1": "passed",
+                "7.2": "passed",
+                "7.3": "passed"
+            };
+            
+            // First, apply defaults to all tests
+            tests.forEach(test => {
+                if (defaults[test.id]) {
+                    test.status = defaults[test.id];
+                }
+            });
+            
+            // Then, override with saved localStorage values if they exist
+            const saved = localStorage.getItem('testStatuses');
+            if (saved) {
+                const statuses = JSON.parse(saved);
+                tests.forEach(test => {
+                    if (statuses[test.id]) {
+                        test.status = statuses[test.id];
+                    }
+                });
+            }
+        }
+
+        function applyFilters() {
+            const searchTerm = document.getElementById('search').value.toLowerCase();
+            const statusFilter = document.getElementById('filter-status').value;
+            const typeFilter = document.getElementById('filter-type').value;
+            const priorityFilter = document.getElementById('filter-priority').value;
+
+            const filtered = tests.filter(test => {
+                const matchesSearch = test.title.toLowerCase().includes(searchTerm) ||
+                                    test.module.toLowerCase().includes(searchTerm) ||
+                                    test.id.includes(searchTerm);
+                const matchesStatus = statusFilter === 'all' || test.status === statusFilter;
+                const matchesType = typeFilter === 'all' || test.type === typeFilter;
+                const matchesPriority = priorityFilter === 'all' || test.priority === priorityFilter;
+
+                return matchesSearch && matchesStatus && matchesType && matchesPriority;
+            });
+
+            renderTests(filtered);
+        }
+
+        // Event listeners
+        document.getElementById('search').addEventListener('input', applyFilters);
+        document.getElementById('filter-status').addEventListener('change', applyFilters);
+        document.getElementById('filter-type').addEventListener('change', applyFilters);
+        document.getElementById('filter-priority').addEventListener('change', applyFilters);
+
+        // Make toggleStatus available globally
+        window.toggleStatus = toggleStatus;
+
+        // Initialize
+        loadTestStatuses();
+        updateStats();
+        renderTests();
+    </script>
+</body>
+</html>
+
