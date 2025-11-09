@@ -105,3 +105,4 @@ For transcription and summarization, you'll need:
 - Update yt-dlp: `pip install --upgrade yt-dlp`
 - Check if it's accessible: `python3 -m yt_dlp --version`
 
+

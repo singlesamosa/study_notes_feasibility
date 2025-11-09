@@ -32,6 +32,7 @@ Thumbs.db
 test_data/
 test_downloads/
 downloads/
+output/
 
 # Media files (videos, audio)
 *.mp4
@@ -53,3 +54,12 @@ notes_*.md
 !STATUS_TRACKER.md
 !docs/*.md
 !tests/TEST_PLAN.md
+
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+secrets/
+

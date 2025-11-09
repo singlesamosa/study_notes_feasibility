@@ -4,6 +4,13 @@ Summarize transcripts into markdown study notes using OpenAI GPT.
 import os
 from typing import Optional
 
+# Load environment variables from .env file if it exists
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # Load .env file if present
+except ImportError:
+    pass  # python-dotenv not installed, use system env vars only
+
 try:
     from openai import OpenAI
 except ImportError:
