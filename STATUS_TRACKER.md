@@ -1,9 +1,9 @@
 # Project Status Tracker
 
 ## Overall Status
-- **Project Phase**: Development - Phase 1 Complete
+- **Project Phase**: Development - Phase 3 Complete
 - **Last Updated**: 2025-11-09
-- **Current Focus**: Audio extraction implementation
+- **Current Focus**: Pipeline integration
 
 ## Module Status
 
@@ -26,16 +26,16 @@
 - **Notes**: Successfully tested with YouTube Shorts and TikTok videos
 
 ### Transcript Module (`transcript/transcribe.py`)
-- **Status**: ⚪ Not Started
-- **Functionality**: Placeholder only
-- **Dependencies**: Whisper API (OpenAI)
-- **Notes**: Needs implementation
+- **Status**: ✅ Implemented
+- **Functionality**: Transcribes audio files using OpenAI Whisper API
+- **Dependencies**: OpenAI library, OpenAI API key
+- **Notes**: Implementation complete, requires API key for testing
 
 ### Summarize Module (`summarize/summarize_notes.py`)
-- **Status**: ⚪ Not Started
-- **Functionality**: Placeholder only
-- **Dependencies**: OpenAI API (or similar LLM)
-- **Notes**: Needs implementation
+- **Status**: ✅ Implemented
+- **Functionality**: Converts transcripts to markdown study notes using OpenAI GPT
+- **Dependencies**: OpenAI library, OpenAI API key
+- **Notes**: Implementation complete, uses GPT-4o-mini by default, requires API key for testing
 
 ## Test Status
 - **Test Plan**: ✅ Created
@@ -60,8 +60,8 @@
 
 ## Next Steps
 1. ✅ Implement audio extraction module (FFmpeg) - COMPLETE
-2. ⚪ Implement transcription module (Whisper API)
-3. ⚪ Implement summarization module (OpenAI GPT)
+2. ✅ Implement transcription module (Whisper API) - COMPLETE
+3. ✅ Implement summarization module (OpenAI GPT) - COMPLETE
 4. ⚪ Create main pipeline script
 5. ⚪ End-to-end testing
 
