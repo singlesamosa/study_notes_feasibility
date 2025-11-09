@@ -80,15 +80,27 @@ Open `test_results/test_dashboard.html` in your browser to see:
 
 ### Setup
 
-1. Install dependencies:
+1. **Install FFmpeg** (required for audio extraction):
+   - macOS: `brew install ffmpeg`
+   - Linux: `sudo apt-get install ffmpeg` (Ubuntu/Debian)
+   - See `docs/INSTALLATION.md` for detailed instructions
+
+2. **Install Python dependencies:**
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Run tests:
+3. **Install Playwright browsers** (for TikTok scraping):
+```bash
+playwright install
+```
+
+4. **Run tests:**
 ```bash
 python3 run_tests_and_update_dashboard.py
 ```
+
+See `docs/INSTALLATION.md` for complete setup instructions.
 
 ### Test Structure
 
