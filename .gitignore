@@ -63,3 +63,7 @@ notes_*.md
 *.pem
 secrets/
 
+# Processing state files
+**/.processing_state.json
+**/.processing_state.json.tmp
+

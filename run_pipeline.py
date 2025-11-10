@@ -15,7 +15,7 @@ from transcript.transcribe import transcribe_audio, check_openai_available
 from summarize.summarize_notes import summarize_transcript
 
 
-def run_pipeline(url: str, output_dir: str = "output", channel_name: str = None):
+def run_pipeline(url: str, output_dir: str = "output", channel_name: str = None, video_num: int = None, total_videos: int = None):
     """
     Run complete pipeline from video URL to study notes.
     
@@ -23,9 +23,15 @@ def run_pipeline(url: str, output_dir: str = "output", channel_name: str = None)
         url: TikTok or YouTube video URL
         output_dir: Base directory to save all outputs
         channel_name: Optional channel name (if not provided, will be extracted from URL)
+        video_num: Optional video number (for progress display)
+        total_videos: Optional total videos (for progress display)
     """
+    progress_prefix = ""
+    if video_num is not None and total_videos is not None:
+        progress_prefix = f"[Video {video_num}/{total_videos}] "
+    
     print("=" * 70)
-    print("COMPLETE PIPELINE: Video URL → Study Notes")
+    print(f"{progress_prefix}COMPLETE PIPELINE: Video URL → Study Notes")
     print("=" * 70)
     print(f"\nURL: {url}\n")
     
@@ -78,7 +84,7 @@ def run_pipeline(url: str, output_dir: str = "output", channel_name: str = None)
     notes_dir.mkdir(parents=True, exist_ok=True)
     
     # Step 1: Download video
-    print("📹 Step 1: Downloading video...")
+    print(f"📹 Step 1/6: Downloading video...")
     try:
         video_path = str(videos_dir / f"{video_id}.mp4")
         downloaded_path = download_video(url, video_path)
@@ -89,7 +95,7 @@ def run_pipeline(url: str, output_dir: str = "output", channel_name: str = None)
         return None
     
     # Step 2: Extract audio
-    print("\n🎤 Step 2: Extracting audio from video...")
+    print(f"\n🎤 Step 2/6: Extracting audio from video...")
     try:
         audio_path = str(audio_dir / f"{video_id}.wav")
         extracted_audio = extract_audio(downloaded_path, audio_path)
@@ -100,7 +106,7 @@ def run_pipeline(url: str, output_dir: str = "output", channel_name: str = None)
         return None
     
     # Step 3: Transcribe audio
-    print("\n📝 Step 3: Transcribing audio to text...")
+    print(f"\n📝 Step 3/6: Transcribing audio to text...")
     from transcript.transcribe import check_whisper_local_available
     
     # Use local Whisper if available, otherwise try API
@@ -137,13 +143,13 @@ def run_pipeline(url: str, output_dir: str = "output", channel_name: str = None)
         return None
     
     # Step 4: Generate notes
-    print("📚 Step 4: Generating markdown notes from transcript...")
+    print(f"📚 Step 4/6: Generating markdown notes from transcript...")
     try:
         notes = summarize_transcript(transcript, model="gpt-4o-mini")
         print(f"✅ Notes generated: {len(notes)} characters")
         
         # Generate title from notes using AI
-        print("\n📝 Step 5: Generating title for notes...")
+        print(f"\n📝 Step 5/6: Generating title for notes...")
         try:
             from openai import OpenAI
             client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -194,6 +200,31 @@ def run_pipeline(url: str, output_dir: str = "output", channel_name: str = None)
         print("=" * 70)
         print(notes)
         print("=" * 70)
+        
+        # Step 6: Clean up intermediate files
+        print(f"\n🧹 Step 6/6: Cleaning up intermediate files...")
+        files_deleted = []
+        files_to_delete = [
+            ("Video", Path(downloaded_path)),
+            ("Audio", Path(extracted_audio)),
+            ("Transcript", Path(transcript_path))
+        ]
+        
+        for file_type, file_path in files_to_delete:
+            if file_path.exists():
+                try:
+                    file_path.unlink()
+                    files_deleted.append(file_type)
+                    print(f"✅ Deleted {file_type.lower()}: {file_path.name}")
+                except Exception as e:
+                    print(f"⚠️  Failed to delete {file_type.lower()}: {e}")
+            else:
+                print(f"ℹ️  {file_type} file not found (may have been deleted already): {file_path.name}")
+        
+        if files_deleted:
+            print(f"✅ Cleaned up {len(files_deleted)} intermediate file(s)")
+        else:
+            print("ℹ️  No intermediate files to clean up")
         
         return notes_path
         

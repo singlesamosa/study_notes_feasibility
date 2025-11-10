@@ -5,20 +5,31 @@ Process an entire TikTok or YouTube channel and generate notes for all videos.
 import sys
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from scrape.scrape_videos import scrape_videos, is_tiktok_url, is_youtube_url
 from run_pipeline import run_pipeline
+from utils.processing_state import (
+    load_processing_state,
+    save_processing_state,
+    create_initial_state,
+    is_video_processed,
+    find_resume_index,
+    update_processing_state,
+    extract_video_id
+)
 
 
 def process_channel(
     channel_url: str,
     output_dir: str = "output",
     max_videos: int = None,
-    skip_existing: bool = True
+    skip_existing: bool = True,
+    resume: bool = True,
+    reset: bool = False
 ):
     """
     Process all videos from a channel and generate notes.
@@ -28,6 +39,8 @@ def process_channel(
         output_dir: Base directory to save all outputs
         max_videos: Maximum number of videos to process (None = all)
         skip_existing: Skip videos that already have notes generated
+        resume: Resume from last processed video (default: True)
+        reset: Reset processing state and start fresh (default: False)
     """
     print("=" * 70)
     print("CHANNEL PROCESSING: Generate Notes for All Videos")
@@ -85,58 +98,98 @@ def process_channel(
     else:
         channel_name_clean = "unknown_channel"
     
+    # Channel-specific directories
+    channel_dir = Path(output_dir) / channel_name_clean
+    notes_dir = channel_dir / "notes"
+    notes_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Load or create processing state
+    if reset:
+        print("🔄 Resetting processing state...")
+        state = create_initial_state(channel_url, channel_name_clean)
+        save_processing_state(channel_dir, state)
+    else:
+        state = load_processing_state(channel_dir)
+        if state is None:
+            state = create_initial_state(channel_url, channel_name_clean)
+            save_processing_state(channel_dir, state)
+            print("📝 Created new processing state file")
+        else:
+            print(f"📝 Loaded processing state: {state.get('total_processed', 0)} videos processed")
+            if state.get('last_processed_url'):
+                print(f"   Last processed: {state['last_processed_url']}")
+    
+    # Determine starting index (resume functionality)
+    start_index = 0
+    if resume and state.get('last_processed_url'):
+        start_index = find_resume_index(video_urls, state['last_processed_url'])
+        if start_index > 0:
+            print(f"▶️  Resuming from video {start_index + 1}/{len(video_urls)}")
+            print(f"   (Last processed: {state['last_processed_url']})")
+        else:
+            print("ℹ️  Last processed video not found in current list, starting from beginning")
+    
     # Step 2: Process each video
     print("=" * 70)
-    print(f"PROCESSING {len(video_urls)} VIDEOS")
+    print(f"PROCESSING {len(video_urls) - start_index} VIDEOS (starting from index {start_index + 1})")
     print(f"Channel: {channel_name or 'Unknown'}")
     print("=" * 70)
     print()
-    
-    # Channel-specific notes directory
-    notes_dir = Path(output_dir) / channel_name_clean / "notes"
-    notes_dir.mkdir(parents=True, exist_ok=True)
     
     successful = 0
     failed = 0
     skipped = 0
     
-    for i, video_url in enumerate(video_urls, 1):
+    for i, video_url in enumerate(video_urls[start_index:], start=start_index + 1):
         print(f"\n{'=' * 70}")
-        print(f"Video {i}/{len(video_urls)}: {video_url}")
+        print(f"📹 Video {i}/{len(video_urls)}: {video_url}")
         print("=" * 70)
         
+        # Extract video ID
+        video_id = extract_video_id(video_url)
+        
         # Check if notes already exist (skip if requested)
-        if skip_existing:
-            # Extract video ID to check for existing notes
-            if "tiktok.com" in video_url:
-                match = re.search(r'/video/(\d+)', video_url)
-                video_id = match.group(1) if match else None
-            elif "youtube.com" in video_url or "youtu.be" in video_url:
-                match = re.search(r'(?:v=|\/)([0-9A-Za-z_-]{11}).*', video_url)
-                video_id = match.group(1) if match else None
-            else:
-                video_id = None
-            
-            if video_id:
-                # Check if any notes file exists for this video
-                existing_notes = list(notes_dir.glob(f"*{video_id}*"))
-                if existing_notes:
-                    print(f"⏭️  Skipping (notes already exist: {existing_notes[0].name})")
-                    skipped += 1
-                    continue
+        if skip_existing and video_id:
+            is_processed, notes_filename = is_video_processed(video_id, state, notes_dir)
+            if is_processed:
+                print(f"⏭️  Skipping (notes already exist: {notes_filename})")
+                print(f"   Progress: {i}/{len(video_urls)} videos processed")
+                skipped += 1
+                # Update state for skipped video
+                state = update_processing_state(state, video_id, video_url, notes_filename, status="skipped")
+                save_processing_state(channel_dir, state)
+                continue
         
         # Run pipeline for this video with channel name
+        notes_path = None
         try:
-            notes_path = run_pipeline(video_url, output_dir, channel_name=channel_name)
+            notes_path = run_pipeline(video_url, output_dir, channel_name=channel_name, video_num=i, total_videos=len(video_urls))
             if notes_path:
                 successful += 1
+                notes_filename = Path(notes_path).name
                 print(f"✅ Video {i}/{len(video_urls)} completed successfully")
+                
+                # Update state for successful processing
+                if video_id:
+                    state = update_processing_state(state, video_id, video_url, notes_filename, status="success")
+                    state["last_processed_index"] = i - 1  # 0-indexed
+                    save_processing_state(channel_dir, state)
             else:
                 failed += 1
                 print(f"⚠️  Video {i}/{len(video_urls)} completed with warnings")
+                
+                # Update state for failed processing
+                if video_id:
+                    state = update_processing_state(state, video_id, video_url, None, status="failed")
+                    save_processing_state(channel_dir, state)
         except Exception as e:
             failed += 1
             print(f"❌ Video {i}/{len(video_urls)} failed: {e}")
+            
+            # Update state for failed processing
+            if video_id:
+                state = update_processing_state(state, video_id, video_url, None, status="failed")
+                save_processing_state(channel_dir, state)
             continue
     
     # Summary
